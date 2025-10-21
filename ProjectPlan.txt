@@ -1,9 +1,12 @@
 Problem: 
 - When starting out, it is uncommon for music producers to have a sound library already. It is hard to get a reliable library of sounds without having to pay for it. 
 Solution: 
-- I want to make a website that essentially builds a sample library based on user input. 
+- I want to make a website that essentially builds a sample library based on user input. Includes features below. 
 - Link to Audio conversion
 - AI Splitting
+- Audio Extracting
+- File orgazation 
+- Key/Tempo determinant
 - Gives you the key/bpm of the song you download
 Plan: 
 Layout => [
@@ -13,7 +16,7 @@ websitetxt = "insertalink"
 
 user will input a social media link (youtube, youtube shorts, instagram, instagram shorts, tiktok) 
 
-- There will be an output log telling the user what's going on. 
+- There will be an output log telling the user what's going on. The user will be made aware of everything that is working and everything that's not. 
 - - EX: Ananlyzing link
 - - EX: Linktype = (either youtube, instagram, tiktok) 
 - - EX: Starting download using Method(#)
@@ -24,3 +27,10 @@ user will input a social media link (youtube, youtube shorts, instagram, instagr
 
 Backend =>
 I will be implementing my own python projets that I have been working on to help me with this project. 
+Haven't decided if I will be attempting to build this with just javascript or both java and python. 
+]
+
+Vague Directory Organization: 
+Main(folder) 
+- Home.html
+- backend (folder)
