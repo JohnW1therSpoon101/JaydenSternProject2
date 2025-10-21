@@ -1,5 +1,26 @@
 Problem: 
-
+- When starting out, it is uncommon for music producers to have a sound library already. It is hard to get a reliable library of sounds without having to pay for it. 
 Solution: 
-
+- I want to make a website that essentially builds a sample library based on user input. 
+- Link to Audio conversion
+- AI Splitting
+- Gives you the key/bpm of the song you download
 Plan: 
+Layout => [
+
+Home.html: 
+websitetxt = "insertalink"
+
+user will input a social media link (youtube, youtube shorts, instagram, instagram shorts, tiktok) 
+
+- There will be an output log telling the user what's going on. 
+- - EX: Ananlyzing link
+- - EX: Linktype = (either youtube, instagram, tiktok) 
+- - EX: Starting download using Method(#)
+- - EX: Starting AI Splitter 
+- - EX: Progress log 
+- - EX: Packaging.. prepping for departure.
+- - EX: Process complete !
+
+Backend =>
+I will be implementing my own python projets that I have been working on to help me with this project. 
