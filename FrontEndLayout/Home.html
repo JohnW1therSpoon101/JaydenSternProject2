@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MusicTechTools — SampleForge</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root {
+        --bg: #0b0d10;
+        --panel: #11151a;
+        --panel2: #151a20;
+        --text: #d7e1ec;
+        --muted: #8b95a1;
+        --accent: #60a5fa;
+        --ok: #22c55e;
+        --err: #ef4444;
+        --mono: ui-monospace, Menlo, Consolas, monospace;
+        --round: 16px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #0b0d10, #0e1217);
+        color: var(--text);
+        font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+      a {
+        color: var(--accent);
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--panel2);
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid #1f2630;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid #1b222c;
+        border-radius: var(--round);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+        padding: 20px;
+      }
+      h3 {
+        margin-top: 0;
+        font-family: var(--mono);
+        font-size: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .chip {
+        padding: 6px 10px;
+        border: 1px solid #253041;
+        border-radius: 999px;
+        background: #0e151e;
+        color: var(--muted);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .chip:hover {
+        filter: brightness(1.1);
+      }
+      .term {
+        background: #0a0f14;
+        border: 1px solid #1a222c;
+        border-radius: 12px;
+        padding: 10px;
+        height: 260px;
+        overflow: auto;
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+      .line {
+        white-space: pre-wrap;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #1f2630;
+        background: #0e1319;
+        color: var(--text);
+        outline: none;
+      }
+      button {
+        all: unset;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #1a2330, #141b25);
+        border: 1px solid #243042;
+        cursor: pointer;
+      }
+      button:hover {
+        filter: brightness(1.08);
+      }
+      .accent {
+        background: linear-gradient(180deg, #2563eb, #1d4ed8);
+        border-color: #1e40af;
+      }
+      .warn {
+        background: linear-gradient(180deg, #b45309, #92400e);
+        border-color: #7c2d12;
+      }
+      .progress {
+        height: 8px;
+        background: #111820;
+        border: 1px solid #1f2937;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .progress > div {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #60a5fa, #34d399);
+      }
+      .pill {
+        font-family: var(--mono);
+        font-weight: 700;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .err {
+        color: var(--err);
+      }
+      .footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 30px;
+      }
+      .locknote {
+        font-size: 12px;
+        color: #9fb2c7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1 style="margin: 0">
+          MusicTechTools <span class="muted">— SampleForge</span>
+        </h1>
+        <span class="badge mono">Built by Stxrn</span>
+        <span id="appStatus" class="badge mono"
+          >status: <span class="pill">idle</span></span
+        >
+      </header>
+
+      <section class="panel">
+        <h3>Welcome</h3>
+        <p class="muted" style="margin-top: -5px">
+          Choose an <b>OPTION</b>, paste a link, and start. <b>DrumKit</b> runs
+          the full pipeline (Download → Split → Key/BPM → Organize as kit →
+          Zip).
+        </p>
+
+        <!-- OPTIONS -->
+        <div class="row" id="optionsRow">
+          <span class="chip" data-opt="link2stems">link2stems</span>
+          <span class="chip" data-opt="getaudio">getaudio</span>
+          <span class="chip" data-opt="getdetails">getdetails</span>
+          <span class="chip" data-opt="DrumKit">DrumKit</span>
+        </div>
+
+        <!-- INPUT -->
+        <input
+          id="linkInput"
+          type="text"
+          placeholder="insertalink (YouTube, Instagram, TikTok)"
+        />
+
+        <!-- CHECKBOXES -->
+        <div class="row muted" style="margin-top: 10px">
+          <label
+            ><input type="checkbox" id="chkDownload" checked /> Download</label
+          >
+          <label
+            ><input type="checkbox" id="chkSplit" checked /> AI Splitter</label
+          >
+          <label
+            ><input type="checkbox" id="chkAnalyze" checked /> Key/BPM</label
+          >
+          <label
+            ><input type="checkbox" id="chkZip" checked /> Zip Output</label
+          >
+        </div>
+        <div id="lockNote" class="locknote" style="display: none">
+          DrumKit is selected — steps are locked for the full pipeline.
+        </div>
+
+        <!-- BUTTONS -->
+        <div class="row" style="margin: 10px 0">
+          <button id="btnStart" class="accent">▶ Start</button>
+          <button id="btnCancel" class="warn">■ Cancel</button>
+          <button id="btnClear">⎚ Clear</button>
+        </div>
+
+        <!-- LOGS -->
+        <div class="term mono" id="log"></div>
+        <div class="progress"><div id="progressBar"></div></div>
+
+        <div class="row" style="margin-top: 10px">
+          <a id="downloadLink" class="muted" href="#" style="display: none"
+            >Download ZIP</a
+          >
+        </div>
+      </section>
+
+      <div class="footer">
+        v1.1 — options: <b>link2stems</b>, <b>getaudio</b>, <b>getdetails</b>,
+        <b>DrumKit</b>.
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        let selectedOpt = null;
+        let currentTask = null;
+        let logStream = null;
+        const el = (id) => document.getElementById(id);
+        const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+        const log = el("log");
+        const progressBar = el("progressBar");
+
+        // Helper functions
+        function appendLog(text) {
+          const line = document.createElement("div");
+          line.className = "line";
+          line.textContent = text;
+          log.appendChild(line);
+          log.scrollTop = log.scrollHeight;
+        }
+        function setStatus(txt) {
+          el("appStatus").querySelector(".pill").textContent = txt;
+        }
+        function setProgress(p) {
+          progressBar.style.width = Math.max(0, Math.min(100, p | 0)) + "%";
+        }
+        function setDownloadLink(url) {
+          const a = el("downloadLink");
+          if (url) {
+            a.href = url;
+            a.style.display = "inline";
+          } else {
+            a.style.display = "none";
+          }
+        }
+        function pickChip(btn) {
+          $$(".chip").forEach((c) => (c.style.outline = "none"));
+          btn.style.outline = "2px solid #2563eb";
+          btn.style.outlineOffset = "2px";
+        }
+        function setStepLocks(locked) {
+          ["chkDownload", "chkSplit", "chkAnalyze", "chkZip"].forEach((id) => {
+            const c = el(id);
+            c.checked = true;
+            c.disabled = locked;
+          });
+          el("lockNote").style.display = locked ? "block" : "none";
+        }
+
+        // Chip selection
+        $$(".chip").forEach((ch) => {
+          ch.addEventListener("click", () => {
+            selectedOpt = ch.dataset.opt;
+            appendLog(`• OPTION selected: ${selectedOpt}`);
+            pickChip(ch);
+            // Lock steps when DrumKit is selected (full pipeline)
+            setStepLocks(selectedOpt === "DrumKit");
+          });
+        });
+
+        // Buttons
+        el("btnClear").onclick = () => {
+          log.innerHTML = "";
+          setProgress(0);
+          setStatus("idle");
+          setDownloadLink(null);
+        };
+        el("btnCancel").onclick = () => {
+          if (logStream && logStream.close) logStream.close();
+          setStatus("canceled");
+          appendLog("Process canceled.");
+        };
+        el("btnStart").onclick = start;
+
+        // Keyboard shortcuts
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            start();
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            if (logStream && logStream.close) logStream.close();
+          }
+        });
+
+        // Backend contract
+        const API = {
+          process: "/api/process",
+          stream: (task) =>
+            `/api/logs/stream?task_id=${encodeURIComponent(task)}`,
+          status: (task) => `/api/status/${encodeURIComponent(task)}`,
+        };
+
+        function gatherPayload() {
+          const link = el("linkInput").value.trim();
+          const drumkit = selectedOpt === "DrumKit";
+          const steps = {
+            download: drumkit ? true : el("chkDownload").checked,
+            split: drumkit ? true : el("chkSplit").checked,
+            analyze: drumkit ? true : el("chkAnalyze").checked,
+            zip: drumkit ? true : el("chkZip").checked,
+          };
+          const option = selectedOpt || "link2stems";
+          const payload = { link, option, steps };
+          if (drumkit) {
+            payload.mode = "drumkit";
+          } // backend can branch to kit organizer
+          return payload;
+        }
+
+        async function start() {
+          const { link, option, steps, mode } = gatherPayload();
+          const needsLink =
+            option === "link2stems" ||
+            option === "getaudio" ||
+            option === "DrumKit" ||
+            steps.download;
+          if (needsLink && !link) {
+            appendLog("[error] Please paste a valid link first.");
+            el("linkInput").focus();
+            return;
+          }
+          setStatus("running");
+          setProgress(0);
+          setDownloadLink(null);
+          appendLog(`Starting ${option}${mode ? " (" + mode + ")" : ""}...`);
+          try {
+            const r = await fetch(API.process, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ link, option, steps, mode }),
+            });
+            if (!r.ok) throw new Error("Start failed: " + r.status);
+            const { task_id } = await r.json();
+            currentTask = task_id;
+            streamLogs(task_id);
+            pollStatus(task_id);
+          } catch (err) {
+            appendLog("[error] " + err);
+            setStatus("error");
+          }
+        }
+
+        function streamLogs(task) {
+          try {
+            logStream = new EventSource(API.stream(task));
+            logStream.onmessage = (e) => appendLog(e.data);
+            logStream.addEventListener("progress", (e) => {
+              try {
+                const d = JSON.parse(e.data);
+                setProgress(d.pct);
+              } catch {}
+            });
+            logStream.addEventListener("done", (e) => {
+              setProgress(100);
+              setStatus("complete");
+              try {
+                const d = JSON.parse(e.data);
+                if (d.zip_url) setDownloadLink(d.zip_url);
+              } catch {}
+              appendLog("Process complete!");
+              logStream.close();
+            });
+          } catch {
+            appendLog("[warn] SSE unsupported");
+          }
+        }
+
+        async function pollStatus(task) {
+          const iv = setInterval(async () => {
+            try {
+              const r = await fetch(API.status(task));
+              if (!r.ok) throw new Error();
+              const d = await r.json();
+              if (typeof d.progress === "number") setProgress(d.progress);
+              if (d.state === "done") {
+                setStatus("complete");
+                clearInterval(iv);
+              }
+              if (d.state === "error") {
+                setStatus("error");
+                clearInterval(iv);
+              }
+            } catch {}
+          }, 1500);
+        }
+      })();
+    </script>
+  </body>
+</html>
