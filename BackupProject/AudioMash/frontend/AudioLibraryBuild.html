@@ -1,0 +1,57 @@
+<!-- frontend/AudioLibraryBuild.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>AudioMash – Add to Library</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Add to Audio Library</h1>
+      <div class="panel">
+        <div class="row">
+          <input id="trackId" placeholder="Track ID (no spaces)" />
+          <input id="title" placeholder="Title" />
+          <input id="genre" placeholder="Genre" />
+        </div>
+        <div class="row">
+          <label
+            >Full Mix: <input id="full" type="file" accept="audio/*"
+          /></label>
+        </div>
+        <div class="row">
+          <label
+            >Drums: <input id="drums" type="file" accept="audio/*"
+          /></label>
+        </div>
+        <div class="row">
+          <label>Bass: <input id="bass" type="file" accept="audio/*" /></label>
+        </div>
+        <div class="row">
+          <label
+            >Vocals: <input id="vocals" type="file" accept="audio/*"
+          /></label>
+        </div>
+        <div class="row">
+          <label
+            >Other: <input id="other" type="file" accept="audio/*"
+          /></label>
+        </div>
+        <hr />
+        <div class="row">
+          <button id="Add2AudioLibraryButton">Add to Library</button>
+          <span id="status" class="badge">fill all fields</span>
+        </div>
+      </div>
+      <div class="footer-note">
+        This stores your stems locally in your browser (IndexedDB). No server is
+        used in this phase.
+      </div>
+    </div>
+
+    <script src="./js/api.js" type="module"></script>
+    <script src="./js/AudioLibraryBuild.js" type="module"></script>
+  </body>
+</html>

@@ -35,7 +35,36 @@ AudioLibraryBuild.html =>
 Add2AudioLibraryButton => This button allows the user to add their own audio audio + stems (note that upload requirements need to be met) 
 - Requirements: upload must have the full audio + stems (drums, bass, vocal,  other) 
 
+...............Concepts.............................
+AudioLibraryFolder Layout
+(Option1) =>
+TrackTitle (folder)
+- TrackTitle.wav (full audiofile) 
+- bass.wav
+- drums.wav
+- other.wav
+- vocals.wav 
+
+(option2) =>
+TrackTitle (folder) 
+- Tracktitle stems (folder)
+- - bass.wav
+- - drums.wav 
+- - other.wav 
+- - Vocals.wav 
+- Tracktitle.wav (full audiofile) 
 
 .....................................................
 File + Folder Locatinos => 
 AudioLibrary (folder) = JaydenSternProject2 (folder)/ BackupProject (folder)/ AudioLibrary (folder)
+........................................
+ProjectFileDirectory => (project directory build made with AI)
+
+AudioMash/
+  frontend/
+    Mash.html
+    js/
+      Mash.js
+      audioUtils.js
+    css/
+      style.css

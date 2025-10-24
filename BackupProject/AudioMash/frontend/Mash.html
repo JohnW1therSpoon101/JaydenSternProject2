@@ -1,0 +1,155 @@
+<!-- frontend/Mash.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>AudioMash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./css/style.css" />
+    <style>
+      /* quick extra styling for sliders and progress */
+      input[type="range"] {
+        width: 150px;
+        accent-color: #555;
+      }
+      #progressBar {
+        width: 100%;
+        height: 10px;
+        background: #222;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      #progressFill {
+        height: 100%;
+        width: 0%;
+        background: #0f0;
+        transition: width 0.2s;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>AudioMash</h1>
+      <div class="panel">
+        <h2>Pick Stems</h2>
+
+        <div class="row">
+          <button id="PickdrumssButton">Pick Drums</button>
+          <input
+            id="drumsInput"
+            class="input-hidden"
+            type="file"
+            accept="audio/*"
+          />
+          <input
+            id="drumsVol"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+            title="Volume"
+          />
+          <span id="drumsBadge" class="badge">no drums selected</span>
+        </div>
+
+        <div class="row">
+          <button id="PickBassButton">Pick Bass</button>
+          <input
+            id="bassInput"
+            class="input-hidden"
+            type="file"
+            accept="audio/*"
+          />
+          <input
+            id="bassVol"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+            title="Volume"
+          />
+          <span id="bassBadge" class="badge">no bass selected</span>
+        </div>
+
+        <div class="row">
+          <button id="PickVocalsButton">Pick Vocals</button>
+          <input
+            id="vocalsInput"
+            class="input-hidden"
+            type="file"
+            accept="audio/*"
+          />
+          <input
+            id="vocalsVol"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+            title="Volume"
+          />
+          <span id="vocalsBadge" class="badge">no vocals selected</span>
+        </div>
+
+        <div class="row">
+          <button id="PickOthersButton">Pick Other</button>
+          <input
+            id="otherInput"
+            class="input-hidden"
+            type="file"
+            accept="audio/*"
+          />
+          <input
+            id="otherVol"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+            title="Volume"
+          />
+          <span id="otherBadge" class="badge">no other selected</span>
+        </div>
+
+        <hr />
+
+        <div class="row">
+          <button id="Mashbutton" disabled>🔊 Mash</button>
+          <span id="renderStatus" class="badge">waiting for stems…</span>
+        </div>
+        <div id="progressBar"><div id="progressFill"></div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Result</h2>
+        <audio id="player" controls></audio>
+        <div class="row">
+          <a
+            id="downloadLink"
+            class="btn"
+            download="AudioMash.wav"
+            style="display: none"
+            >⬇ Download Mix (WAV)</a
+          >
+        </div>
+        <div class="footer-note">
+          Adjust the sliders for each stem to balance your mix.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Optional: Use Your Local Library (Browser Storage)</h2>
+        <div class="row">
+          <button id="loadLibraryBtn">Load Tracks from Library</button>
+          <span class="badge"
+            >no backend needed — uses your browser storage</span
+          >
+        </div>
+        <div id="libraryList" class="list"></div>
+      </div>
+    </div>
+
+    <script src="./js/audioUtils.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/Mash.js"></script>
+  </body>
+</html>
