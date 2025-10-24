@@ -1,0 +1,41 @@
+Project Name: AudioMash
+
+What does this project do?: 
+- Consists of HTML and JavaScript 
+- This project will essentially take different stems from songs located in a given audio library
+- combine the different audio files to make a "Mashup"
+- The project will give you an output that allows you to..
+- - Play audio
+- - Download audio 
+
+WEBSITE CHARACTERISTICS: 
+- Black Background
+
+.......................................................
+HTML Layout => 
+Mash.html : 
+
+- Display Project name as title 
+- The website will have a visual interactive prompt to gather necessary audio
+
+
+
+
+Buttons: 
+
+Mashbutton => This button starts the mashup of all stems
+PickdrumssButton => This button is a prompt for the user to pick a genre
+PickBassButton => 
+PickVocalsButton => 
+PickOthersButton => 
+
+...................................
+AudioLibraryBuild.html =>
+
+Add2AudioLibraryButton => This button allows the user to add their own audio audio + stems (note that upload requirements need to be met) 
+- Requirements: upload must have the full audio + stems (drums, bass, vocal,  other) 
+
+
+.....................................................
+File + Folder Locatinos => 
+AudioLibrary (folder) = JaydenSternProject2 (folder)/ BackupProject (folder)/ AudioLibrary (folder)
