@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DrumSequencer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="left">
+        <button id="playBtn" aria-label="Play">▶️ Play</button>
+        <button id="stopBtn" aria-label="Stop">⏹️ Stop</button>
+        <label
+          >Tempo
+          <input id="tempoInput" type="number" min="40" max="240" value="120" />
+          <span>bpm</span>
+        </label>
+        <label
+          >Time Signature
+          <select id="timeSignatureSelect">
+            <option value="4/4" selected>4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="6/8">6/8</option>
+          </select>
+        </label>
+        <label
+          >Steps / beat
+          <select id="stepsPerBeatSelect">
+            <option value="4" selected>4 (16ths)</option>
+            <option value="3">3 (triplets)</option>
+            <option value="2">2 (8ths)</option>
+          </select>
+        </label>
+        <button id="clearPatternBtn">🧽 Clear</button>
+      </div>
+      <div class="right">
+        <button id="addSoundBtn">➕ Add Drum Sound</button>
+        <input id="addSoundFile" type="file" accept="audio/*" hidden />
+        <button id="exportBtn">⬇️ Export .wav</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid-section">
+        <div class="grid-header">
+          <h2>Step Sequencer</h2>
+          <div id="nowMarker" aria-hidden="true"></div>
+        </div>
+        <div
+          id="gridContainer"
+          class="grid-container"
+          role="grid"
+          aria-label="Drum step sequencer grid"
+        ></div>
+      </section>
+
+      <section class="mixer-section">
+        <h2>Mixer</h2>
+        <div id="mixerContainer" class="mixer-container"></div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <small>DrumSequencer — HTML + JavaScript — Web Audio API</small>
+    </footer>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>

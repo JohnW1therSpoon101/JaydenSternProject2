@@ -1,0 +1,27 @@
+DrumSequencer/
+│
+├── frontend/
+│   ├── index.html                # Main sequencer interface
+│   ├── css/
+│   │   └── style.css             # UI styling (dark theme, FL Studio grid layout)
+│   └── js/
+│       ├── DrumGrid.js           # Builds & manages the drum grid UI
+│       ├── SoundEngine.js        # Handles playback and sound triggering
+│       ├── Mixer.js              # Applies reverb, delay, distortion, and volume control
+│       ├── Exporter.js           # Mixes sequence and exports as WAV
+│       └── main.js               # App initialization and event logic
+│
+├── assets/
+│   ├── Kick.wav
+│   ├── Snare.wav
+│   ├── Clap.wav
+│   ├── HiHat.wav
+│   ├── OpenHat.wav
+│   └── Crash.wav
+│
+├── BuildTools/ ( don't need but i chose to include) 
+│   └── scripts/
+│       ├── run-local.sh          # Launches a local dev server
+│       └── clean-assets.sh       # (Optional) clears unused custom uploads
+│
+└── README.md                     # Project guide (this file)

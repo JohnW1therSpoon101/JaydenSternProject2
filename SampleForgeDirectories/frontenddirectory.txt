@@ -1,0 +1,22 @@
+frontend/
+├── templates/
+│   └── Home.html
+└── static/
+    ├── css/
+    │   └── base.css
+    ├── js/
+    │   ├── app.js
+    │   ├── api.js
+    │   ├── ui-log.js
+    │   ├── file-utils.js
+    │   ├── ai-splitter/
+    │   │   ├── splitter.js
+    │   │   ├── midside.js
+    │   │   └── webgpu/
+    │   │       └── demucs-webgpu.js
+    │   └── vendor/
+    │       ├── meyda.min.js
+    │       └── tonal.min.js
+    └── assets/
+        └── icons/
+            └── logo.svg

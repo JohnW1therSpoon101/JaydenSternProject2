@@ -1,0 +1,143 @@
+:root {
+  --bg: #0b0d10;
+  --panel: #11151a;
+  --text: #d7e1ec;
+  --muted: #8b95a1;
+  --accent: #60a5fa;
+  --ok: #22c55e;
+  --err: #ef4444;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #0b0d10, #0e1217);
+  color: var(--text);
+  font-family: Inter, system-ui, Roboto, Arial, sans-serif;
+}
+.wrap {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+h1 {
+  margin: 0;
+}
+.muted {
+  color: var(--muted);
+}
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #151a20;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid #1f2630;
+}
+.panel {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #1b222c;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+input[type="text"] {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #1f2630;
+  background: #0e1319;
+  color: var(--text);
+}
+button {
+  all: unset;
+  background: linear-gradient(180deg, #1a2330, #141b25);
+  border: 1px solid #243042;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+.accent {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  border-color: #1e40af;
+}
+.warn {
+  background: linear-gradient(180deg, #b45309, #92400e);
+  border-color: #7c2d12;
+}
+.term {
+  background: #0a0f14;
+  border: 1px solid #1a222c;
+  border-radius: 12px;
+  padding: 10px;
+  height: 260px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.line {
+  white-space: pre-wrap;
+}
+.progress {
+  height: 8px;
+  background: #111820;
+  border: 1px solid #1f2937;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress > div {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa, #34d399);
+}
+.chip {
+  padding: 6px 10px;
+  border: 1px solid #253041;
+  border-radius: 999px;
+  background: #0e151e;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover {
+  filter: brightness(1.1);
+}
+.pill {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+.ok {
+  color: var(--ok);
+}
+.err {
+  color: var(--err);
+}
+.locknote {
+  font-size: 12px;
+  color: #9fb2c7;
+}
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 30px;
+}

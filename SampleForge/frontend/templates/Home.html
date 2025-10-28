@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MusicTechTools — SampleForge</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!-- Base styles you already have -->
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <style>
+      /* ---- Hard black canvas + vivid text palette ---- */
+      :root {
+        --black: #000;
+        --panel: #0b0b0b;
+        --border: #1a1a1a;
+
+        /* Text accents */
+        --txt: #e7edf6; /* default body text */
+        --muted: #9aa4b2; /* helper text */
+        --title: #7dd3fc; /* cyan titles */
+        --chip-1: #a78bfa; /* link2stems (violet) */
+        --chip-2: #34d399; /* getaudio (green) */
+        --chip-3: #fbbf24; /* getdetails (amber) */
+        --chip-4: #fb7185; /* DrumKit (rose) */
+
+        /* Step label tints */
+        --step-download: #34d399;
+        --step-split: #a78bfa;
+        --step-analyze: #fbbf24;
+        --step-zip: #60a5fa;
+        --step-dk: #fb923c; /* DK Builder (orange) */
+
+        /* Buttons/FX */
+        --btn-accent: #2563eb;
+        --btn-accent-2: #1d4ed8;
+        --btn-warn: #b45309;
+        --btn-warn-2: #92400e;
+        --progress-a: #60a5fa;
+        --progress-b: #34d399;
+      }
+
+      body {
+        background: #000 !important; /* pure black */
+        color: var(--txt);
+      }
+
+      .wrap {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      /* Title gets a cyan glow vibe */
+      h1 {
+        margin: 0;
+        color: var(--txt);
+      }
+      h1 .brand-accent {
+        color: var(--title);
+        text-shadow: 0 0 18px rgba(125, 211, 252, 0.25);
+      }
+
+      .badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #0f0f0f;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        font-size: 12px;
+      }
+
+      /* Panel is near-black with subtle edges */
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      /* Option chips with unique colors */
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: #0e0e0e;
+        color: var(--muted);
+        transition: transform 0.08s ease, filter 0.08s ease;
+        user-select: none;
+      }
+      .chip:hover {
+        filter: brightness(1.12);
+        transform: translateY(-1px);
+      }
+      .chip[data-opt="link2stems"] {
+        color: var(--chip-1);
+        border-color: rgba(167, 139, 250, 0.25);
+      }
+      .chip[data-opt="getaudio"] {
+        color: var(--chip-2);
+        border-color: rgba(52, 211, 153, 0.25);
+      }
+      .chip[data-opt="getdetails"] {
+        color: var(--chip-3);
+        border-color: rgba(251, 191, 36, 0.25);
+      }
+      .chip[data-opt="DrumKit"] {
+        color: var(--chip-4);
+        border-color: rgba(251, 113, 133, 0.28);
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #0c0c0c;
+        color: var(--txt);
+        outline: none;
+      }
+
+      /* Step labels get per-step color accents */
+      .step-label {
+        color: var(--muted);
+      }
+      .step-download {
+        color: var(--step-download);
+      }
+      .step-split {
+        color: var(--step-split);
+      }
+      .step-analyze {
+        color: var(--step-analyze);
+      }
+      .step-zip {
+        color: var(--step-zip);
+      }
+      .step-dk {
+        color: var(--step-dk);
+      }
+
+      button {
+        all: unset;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid;
+        background: linear-gradient(
+          180deg,
+          var(--btn-accent),
+          var(--btn-accent-2)
+        );
+        border-color: #173b91;
+        color: #f8fbff;
+      }
+      button:hover {
+        filter: brightness(1.06);
+      }
+      .warn {
+        background: linear-gradient(180deg, var(--btn-warn), var(--btn-warn-2));
+        border-color: #6b2e09;
+      }
+
+      /* Terminal log + progress bar */
+      .term {
+        background: #050505;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px;
+        height: 260px;
+        overflow: auto;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.35;
+        color: #cfd6e3;
+      }
+      .line {
+        white-space: pre-wrap;
+      }
+      .progress {
+        height: 8px;
+        background: #0d0d0d;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .progress > div {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(
+          90deg,
+          var(--progress-a),
+          var(--progress-b)
+        );
+      }
+
+      .locknote {
+        font-size: 12px;
+        color: #9fb2c7;
+      }
+      .footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 30px;
+      }
+      .pill {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>MusicTechTools <span class="brand-accent">— SampleForge</span></h1>
+        <span class="badge mono">Built by Stxrn</span>
+        <span id="appStatus" class="badge mono"
+          >status: <span class="pill">idle</span></span
+        >
+      </header>
+
+      <section class="panel">
+        <h3
+          style="
+            margin: 0 0 6px 0;
+            color: var(--title);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+          "
+        >
+          Welcome
+        </h3>
+        <p class="muted">
+          Choose an <b style="color: var(--title)">OPTION</b>, paste a link, and
+          start.
+        </p>
+
+        <!-- OPTION CHIPS -->
+        <div class="row" id="optionsRow">
+          <span class="chip" data-opt="link2stems">link2stems</span>
+          <span class="chip" data-opt="getaudio">getaudio</span>
+          <span class="chip" data-opt="getdetails">getdetails</span>
+          <span class="chip" data-opt="DrumKit">DrumKit</span>
+        </div>
+
+        <!-- LINK INPUT -->
+        <input
+          id="linkInput"
+          type="text"
+          placeholder="insertalink (YouTube, Instagram, TikTok)"
+        />
+
+        <!-- STEP CHECKBOXES -->
+        <div class="row" id="stepRow" style="margin-top: 8px">
+          <label class="step-label step-download"
+            ><input type="checkbox" id="chkDownload" checked /> Download</label
+          >
+          <label class="step-label step-split"
+            ><input type="checkbox" id="chkSplit" checked /> AI Splitter</label
+          >
+          <label class="step-label step-analyze"
+            ><input type="checkbox" id="chkAnalyze" checked /> Key/BPM</label
+          >
+          <label class="step-label step-zip"
+            ><input type="checkbox" id="chkZip" checked /> Zip Output</label
+          >
+          <label class="step-label step-dk"
+            ><input type="checkbox" id="chkDKBuilder" /> DK Builder</label
+          >
+        </div>
+
+        <div id="lockNote" class="locknote" style="display: none">
+          DrumKit: full pipeline locked (Download → Split → Analyze → DK Build →
+          Zip)
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="row" style="margin-top: 10px">
+          <button id="btnStart">▶ Start</button>
+          <button id="btnCancel" class="warn">■ Cancel</button>
+          <button id="btnClear">⎚ Clear</button>
+          <button id="btnLocalSplit">🎧 Local Split</button>
+        </div>
+
+        <!-- TERMINAL LOG -->
+        <div class="term mono" id="log"></div>
+        <div class="progress"><div id="progressBar"></div></div>
+
+        <div class="row" style="margin-top: 10px">
+          <a id="downloadLink" class="muted" href="#" style="display: none"
+            >Download ZIP</a
+          >
+        </div>
+      </section>
+
+      <div class="footer">
+        v1.4 — pure black theme + color-coded options and steps.
+      </div>
+    </div>
+
+    <script type="module" src="/static/js/app.js"></script>
+  </body>
+</html>

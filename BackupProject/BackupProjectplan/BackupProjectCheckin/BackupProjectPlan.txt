@@ -1,70 +1,28 @@
-Project Name: AudioMash
+Backupprojectname: DrumSequencer
 
-What does this project do?: 
-- Consists of HTML and JavaScript 
-- This project will essentially take different stems from songs located in a given audio library
-- combine the different audio files to make a "Mashup"
-- The project will give you an output that allows you to..
-- - Play audio
-- - Download audio 
+Goal: I want to make an interactive drum sequencer that is similar to FL Studio 
+- the goal is for users to easily be able to make their own drum sequence that can be exported/download to their device.
 
-WEBSITE CHARACTERISTICS: 
-- Black Background
+Context: 
+- I want to design various drum sounds using javascript
 
-.......................................................
-HTML Layout => 
-Mash.html : 
+DrumSoundsList = Kick, Clap, Snare, HiHat, OpenHat, Crash
+- the website will use premade sounds with javascript, but users will have the option to use their own audiofile drum sounds. 
 
-- Display Project name as title 
-- The website will have a visual interactive prompt to gather necessary audio
+Drumgrid => 
+The drum grid should look like something similar to FL Studio's drum machine. 
+Drumgrid options ==
+- timesignature = user picks between various time signures. grid changes based off of this input 
+- add drumsound = this option is for users if they want to add additional sounds to the drum machine. 
 
 
+mixer => 
+- there will be a mixer at the bottom below the drum machine. 
+- the mixer will display all the drum tracks on the drum machinej
+- Mixer features: 
+- - adjust volume 
+- - add reverb
+- - add delay
+- - add distortion 
 
-
-Buttons: 
-
-Mashbutton => This button starts the mashup of all stems
-PickdrumssButton => This button is a prompt for the user to pick a genre
-PickBassButton => 
-PickVocalsButton => 
-PickOthersButton => 
-
-...................................
-AudioLibraryBuild.html =>
-
-Add2AudioLibraryButton => This button allows the user to add their own audio audio + stems (note that upload requirements need to be met) 
-- Requirements: upload must have the full audio + stems (drums, bass, vocal,  other) 
-
-...............Concepts.............................
-AudioLibraryFolder Layout
-(Option1) =>
-TrackTitle (folder)
-- TrackTitle.wav (full audiofile) 
-- bass.wav
-- drums.wav
-- other.wav
-- vocals.wav 
-
-(option2) =>
-TrackTitle (folder) 
-- Tracktitle stems (folder)
-- - bass.wav
-- - drums.wav 
-- - other.wav 
-- - Vocals.wav 
-- Tracktitle.wav (full audiofile) 
-
-.....................................................
-File + Folder Locatinos => 
-AudioLibrary (folder) = JaydenSternProject2 (folder)/ BackupProject (folder)/ AudioLibrary (folder)
-........................................
-ProjectFileDirectory => (project directory build made with AI)
-
-AudioMash/
-  frontend/
-    Mash.html
-    js/
-      Mash.js
-      audioUtils.js
-    css/
-      style.css
+- This is all i got so far. 

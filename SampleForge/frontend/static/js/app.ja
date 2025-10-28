@@ -1,0 +1,198 @@
+import { API, startProcess, fetchStatus } from './api.js';
+import { appendLog, setProgress } from './ui-log.js';
+import { fileToAudioBuffer, audioBufferToWavFile } from './file-utils.js';
+import { splitInBrowser } from './ai-splitter/splitter.js';
+
+const el  = id  => document.getElementById(id);
+const $$  = sel => Array.from(document.querySelectorAll(sel));
+
+let selectedOpt = null;
+let currentTask = null;
+let logStream   = null;
+
+const log         = el('log');
+const progressBar = el('progressBar');
+
+function setStatus(txt) {
+  el('appStatus').querySelector('.pill').textContent = txt;
+}
+function setDownloadLink(url) {
+  const a = el('downloadLink');
+  if (url) { a.href = url; a.style.display = 'inline'; }
+  else { a.style.display = 'none'; }
+}
+function pickChip(btn) {
+  $$('.chip').forEach(c => c.style.outline = 'none');
+  btn.style.outline = '2px solid #2563eb';
+  btn.style.outlineOffset = '2px';
+}
+function setStepLocks(locked) {
+  const ids = ['chkDownload','chkSplit','chkAnalyze','chkZip','chkDKBuilder'];
+  ids.forEach(id => {
+    const c = el(id);
+    if (!c) return;
+    // DrumKit forces everything on
+    if (locked) c.checked = true;
+    c.disabled = locked;
+  });
+  el('lockNote').style.display = locked ? 'block' : 'none';
+}
+
+// ---- OPTION select (chips) ----
+$$('.chip').forEach(ch => {
+  ch.addEventListener('click', () => {
+    selectedOpt = ch.dataset.opt;
+    appendLog(log, `• OPTION selected: ${selectedOpt}`);
+    pickChip(ch);
+
+    const isDrumKit = selectedOpt === 'DrumKit';
+    setStepLocks(isDrumKit);
+
+    // If DrumKit, ensure DK Builder is ON (and locked)
+    const dk = el('chkDKBuilder');
+    if (dk) dk.checked = isDrumKit ? true : dk.checked;
+  });
+});
+
+// ---- Buttons ----
+el('btnClear').onclick  = () => { log.innerHTML = ''; setProgress(progressBar, 0); setStatus('idle'); setDownloadLink(null); };
+el('btnCancel').onclick = () => { if (logStream && logStream.close) logStream.close(); setStatus('canceled'); appendLog(log, 'Process canceled.'); };
+el('btnStart').onclick  = startBackend;
+el('btnLocalSplit').onclick = localSplitDemo;
+
+// ---- Keyboard shortcuts ----
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { e.preventDefault(); startBackend(); }
+  if (e.key === 'Escape') { e.preventDefault(); if (logStream && logStream.close) logStream.close(); }
+});
+
+// ---- Start backend process ----
+async function startBackend() {
+  const link = el('linkInput').value.trim();
+
+  const steps = {
+    download : el('chkDownload').checked,
+    split    : el('chkSplit').checked,
+    analyze  : el('chkAnalyze').checked,
+    zip      : el('chkZip').checked,
+    dkbuilder: (el('chkDKBuilder')?.checked) || false
+  };
+
+  const option = selectedOpt || 'link2stems';
+  const mode   = option === 'DrumKit' ? 'drumkit' : undefined;
+
+  // When DrumKit is chosen, force all steps ON client-side as well
+  if (option === 'DrumKit') {
+    steps.download = steps.split = steps.analyze = steps.zip = steps.dkbuilder = true;
+  }
+
+  const needsLink = (option === 'getaudio' || option === 'link2stems' || option === 'DrumKit') || steps.download;
+  if (needsLink && !link) {
+    appendLog(log, '[error] Please paste a valid link first.');
+    el('linkInput').focus();
+    return;
+  }
+
+  setStatus('running');
+  setProgress(progressBar, 0);
+  setDownloadLink(null);
+
+  appendLog(log, `Starting ${option}${mode ? ' ('+mode+')' : ''}...`);
+
+  try {
+    const { task_id } = await startProcess({ link, option, steps, mode });
+    currentTask = task_id;
+    streamLogs(task_id);
+    pollStatus(task_id);
+  } catch (e) {
+    appendLog(log, '[error] ' + e.message);
+    setStatus('error');
+  }
+}
+
+// ---- SSE log stream ----
+function streamLogs(task) {
+  try {
+    logStream = new EventSource(API.stream(task));
+
+    // generic messages (some servers send plain "message")
+    logStream.onmessage = e => appendLog(log, e.data);
+
+    // typed events
+    logStream.addEventListener('log',      e => appendLog(log, e.data));
+    logStream.addEventListener('progress', e => {
+      try {
+        const d = JSON.parse(e.data);
+        if (typeof d.pct === 'number') setProgress(progressBar, d.pct);
+      } catch {}
+    });
+    logStream.addEventListener('done', e => {
+      setProgress(progressBar, 100);
+      setStatus('complete');
+      try {
+        const d = JSON.parse(e.data);
+        if (d.zip_url) setDownloadLink(d.zip_url);
+      } catch {}
+      appendLog(log, 'Process complete!');
+      logStream.close();
+    });
+
+    logStream.addEventListener('error', () => {
+      // may be transient; fallback polling continues
+      appendLog(log, '[warn] SSE stream error/disconnected.');
+    });
+
+  } catch {
+    appendLog(log, '[warn] SSE unsupported; relying on polling only.');
+  }
+}
+
+// ---- Polling fallback / side channel ----
+async function pollStatus(task) {
+  const iv = setInterval(async () => {
+    const d = await fetchStatus(task);
+    if (!d) return;
+    if (typeof d.progress === 'number') setProgress(progressBar, d.progress);
+
+    // show any server-side message lines that aren't in SSE (optional)
+    if (d.message) appendLog(log, d.message);
+
+    if (d.state === 'done') {
+      setStatus('complete');
+      if (d.zip_url) setDownloadLink(d.zip_url);
+      clearInterval(iv);
+    } else if (d.state === 'error') {
+      setStatus('error');
+      if (d.message) appendLog(log, '[error] ' + d.message);
+      clearInterval(iv);
+    } else if (d.state === 'canceled') {
+      setStatus('canceled');
+      clearInterval(iv);
+    }
+  }, 1500);
+}
+
+// ---- Local AI Splitter demo (browser-only midside) ----
+async function localSplitDemo() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      appendLog(log, `Local Split: ${file.name}`);
+      const audioBuffer = await fileToAudioBuffer(file);
+      const { midBuffer, sideBuffer } = await splitInBrowser(audioBuffer);
+
+      appendLog(log, 'Split complete — exporting stems...');
+      await audioBufferToWavFile(midBuffer, `${file.name.replace(/\.[^/.]+$/, '')}-mid.wav`);
+      await audioBufferToWavFile(sideBuffer, `${file.name.replace(/\.[^/.]+$/, '')}-side.wav`);
+      appendLog(log, 'Local Split finished: mid & side stems saved.');
+    } catch (e) {
+      appendLog(log, '[error] Local Split failed: ' + (e?.message || e));
+    }
+  };
+  input.click();
+}

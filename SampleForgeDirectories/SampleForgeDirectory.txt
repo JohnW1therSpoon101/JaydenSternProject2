@@ -1,0 +1,55 @@
+#SampleForge project directory
+SampleForge/
+├── README.md
+├── run.py                          # starts FastAPI dev server
+├── backend/
+│   ├── main.py                     # FastAPI app factory & mounts
+│   ├── requirements.txt
+│   ├── routes/
+│   │   ├── process.py              # /api/process (getaudio, DrumKit)
+│   │   ├── status.py               # /api/status/{task_id}
+│   │   ├── stream.py               # /api/logs/stream (SSE)
+│   │   └── upload.py               # /api/upload (optional: analyze local file server-side)
+│   ├── services/
+│   │   ├── downloader.py           # yt-dlp + ffmpeg helpers
+│   │   ├── demucs_runner.py        # server-side AI split (for DrumKit)
+│   │   ├── keytempo.py             # key/BPM (essentia/librosa)
+│   │   ├── drumkit_organizer.py    # Kick/Snare/Hat/Perc + naming
+│   │   └── zipper.py               # zip packaging utils
+│   ├── core/
+│   │   ├── tasks.py                # task registry, queues, SSE emitters
+│   │   ├── worker.py               # async pipeline orchestration
+│   │   └── models.py               # Pydantic schemas (Steps, ProcessBody, TaskState)
+│   ├── storage/
+│   │   ├── work/                   # per-task working dirs (created at runtime)
+│   │   └── static/                 # served files (zips, previews)
+│   └── config.py                   # paths, model names, tunables
+│
+├── frontend/
+│   ├── templates/
+│   │   └── Home.html               # your terminal-style UI (with DrumKit option)
+│   └── static/
+│       ├── css/
+│       │   └── base.css            # (optional) extract styles from Home.html
+│       ├── js/
+│       │   ├── app.js              # DOM wiring for buttons, SSE, polling
+│       │   ├── api.js              # fetch helpers for /api/process, /status, /stream
+│       │   ├── ui-log.js           # terminal log rendering, progress bar
+│       │   ├── file-utils.js       # load local audio, WAV export helpers
+│       │   ├── ai-splitter/
+│       │   │   ├── splitter.js     # entry: decides WebGPU/WASM/MidSide path
+│       │   │   ├── midside.js      # cheap fallback: mid/side “pseudo-stems”
+│       │   │   ├── webgpu/
+│       │   │   │   ├── demucs-webgpu.js   # placeholder glue if you try a browser model
+│       │   │   │   └── kernels.wgsl       # shader stubs (if you go WebGPU)
+│       │   │   └── wasm/
+│       │   │       ├── model.wasm         # (optional) if you compile a model to WASM
+│       │   │       └── runtime.js
+│       │   └── vendor/
+│       │       ├── meyda.min.js    # optional: chroma/features (browser analyze)
+│       │       └── tonal.min.js    # optional: key spelling helpers
+│       └── assets/
+│           └── icons/              # favicons, logos, etc.
+│
+└── .env.example                    # paths, model choices, allowed origins, etc.
+
