@@ -9,6 +9,7 @@ NEWFEATURES =>
 - give the user options to increase or decrease the length of the drumgrid (in bar length) 
 Mixer: 
 - add panning slider option
+- Add frequency slider 
 Mixrack : 
 - below the mixer stuff for each sound, I want there to be a Ableton inspired mixer rack
 - visualizer that shows volume levels
