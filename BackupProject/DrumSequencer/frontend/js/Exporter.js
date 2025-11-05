@@ -197,7 +197,7 @@ function makeDistCurve(amount) {
   return curve;
 }
 
-// ===== WAV ENCODER =====
+// =====? WAV ENCODER ?=====
 function encodeWav(audioBuffer) {
   const numCh = audioBuffer.numberOfChannels;
   const length = audioBuffer.length * numCh * 2 + 44;
@@ -220,7 +220,7 @@ function encodeWav(audioBuffer) {
   writeString(view, 36, "data");
   view.setUint32(40, audioBuffer.length * numCh * 2, true);
 
-  // Write interleaved PCM
+  // Write interleaved PCM (Pulse Code Modulation)
   let offset = 44;
   const channels = [];
   for (let ch = 0; ch < numCh; ch++)

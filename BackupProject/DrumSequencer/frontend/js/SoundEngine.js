@@ -115,7 +115,7 @@ export class SoundEngine {
     );
   }
 
-  // Basic synths: kick, snare, clap, hihat — quick & light
+  // Basic synth building: kick, snare, clap, hihat — quick & light
   _playSynth(type, time, dest, params = {}) {
     const ctx = this.ctx;
     const vol = ctx.createGain();
@@ -171,7 +171,7 @@ export class SoundEngine {
       makeTap(0.015);
       makeTap(0.03);
     } else {
-      // hihat
+      // hihat sound
       const buf = this._whiteNoiseBuffer();
       const src = ctx.createBufferSource();
       src.buffer = buf;

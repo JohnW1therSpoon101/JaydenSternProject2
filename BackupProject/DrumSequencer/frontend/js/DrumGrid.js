@@ -1,4 +1,4 @@
-// Builds and manages the interactive step grid
+// Builds + manages interactive step grid
 export class DrumGrid {
   constructor({ container, getState, onToggleStep, onChangeRowName }) {
     this.container = container;

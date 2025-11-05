@@ -2,7 +2,7 @@ import { DrumGrid } from "./DrumGrid.js";
 import { SoundEngine } from "./SoundEngine.js";
 import { exportPatternWav } from "./Exporter.js";
 
-// ---------- Global App State ----------
+// ---------- Global State ----------
 const state = {
   bpm: 120,
   timeSig: "4/4",
@@ -11,7 +11,7 @@ const state = {
   tracks: [], // see createDefaultTracks()
 };
 
-// ---------- DOM ----------
+// ---------- Document Object Model  ----------
 const gridContainer = document.getElementById("gridContainer");
 const mixerContainer = document.getElementById("mixerContainer");
 const playBtn = document.getElementById("playBtn");
