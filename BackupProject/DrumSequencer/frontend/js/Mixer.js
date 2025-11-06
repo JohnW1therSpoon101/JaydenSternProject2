@@ -1,4 +1,4 @@
-// Per-track mixer (volume, delay, reverb, distortion)
+// track mixer (volume, delay, reverb, distortion)
 export class Mixer {
   constructor(audioContext) {
     this.ctx = audioContext;
@@ -30,7 +30,7 @@ export class Mixer {
     const postDrive = this.ctx.createGain();
     postDrive.gain.value = 1.0;
 
-    // Dry/Wet routing: input -> (dry+fx) -> gain -> master
+    // Dry/Wet routing: input -> (dry+fx) -> gain -> master (built w AI)
     const input = this.ctx.createGain();
 
     // Delay send/return
