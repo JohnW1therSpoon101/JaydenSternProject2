@@ -1,4 +1,4 @@
-// track mixer (volume, delay, reverb, distortion)
+// track mixer (volume, delay, reverb, distortion, frequency, noise gate, master)
 export class Mixer {
   constructor(audioContext) {
     this.ctx = audioContext;
@@ -6,53 +6,65 @@ export class Mixer {
     this.masterGain.gain.value = 1.0;
     this.masterGain.connect(this.ctx.destination);
 
-    // Simple shared impulse for reverb (small room)
-    this.sharedImpulse = this._makeImpulse(1.5, 0.5); // length(s), decay
+    this.sharedImpulse = this._makeImpulse(1.5, 0.5); // small room
+    this.volumeAnalyzers = []; // store analyzers for visual feedback
   }
 
   createChannelNodes() {
+    const input = this.ctx.createGain();
     const gain = this.ctx.createGain();
-
     const delay = this.ctx.createDelay(2.0);
-    delay.delayTime.value = 0.0;
     const delayGain = this.ctx.createGain();
-    delayGain.gain.value = 0.0;
-
+    const reverbSend = this.ctx.createGain();
     const convolver = this.ctx.createConvolver();
-    convolver.buffer = this.sharedImpulse;
-    const reverbGain = this.ctx.createGain();
-    reverbGain.gain.value = 0.0;
-
-    const waveshaper = this.ctx.createWaveShaper();
-    waveshaper.curve = this._makeDistCurve(0); // 0 drive
     const preDrive = this.ctx.createGain();
-    preDrive.gain.value = 1.0;
+    const waveshaper = this.ctx.createWaveShaper();
     const postDrive = this.ctx.createGain();
+    const lowpass = this.ctx.createBiquadFilter();
+    const compressor = this.ctx.createDynamicsCompressor();
+    const analyzer = this.ctx.createAnalyser();
+
+    // Setup effect defaults
+    delay.delayTime.value = 0.0;
+    delayGain.gain.value = 0.0;
+    reverbSend.gain.value = 0.0;
+    convolver.buffer = this.sharedImpulse;
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = 22050;
+    compressor.threshold.value = -100; // default threshold
+    compressor.knee.value = 20;
+    compressor.ratio.value = 12;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    waveshaper.curve = this._makeDistCurve(0); // 0 drive
+    preDrive.gain.value = 1.0;
     postDrive.gain.value = 1.0;
 
-    // Dry/Wet routing: input -> (dry+fx) -> gain -> master (built w AI)
-    const input = this.ctx.createGain();
-
-    // Delay send/return
+    // Build graph
     input.connect(delay);
     delay.connect(delayGain);
-    delayGain.connect(input); // feedback tapped back in for repeats
+    delayGain.connect(input); // feedback
 
-    // Reverb send (parallel)
-    const reverbSend = this.ctx.createGain();
-    reverbSend.gain.value = 0.0;
     input.connect(reverbSend);
     reverbSend.connect(convolver);
-    convolver.connect(input);
+    convolver.connect(input); // wet signal back into main
 
-    // Distortion inline
     input.connect(preDrive);
     preDrive.connect(waveshaper);
     waveshaper.connect(postDrive);
 
-    // Output
-    postDrive.connect(gain);
+    postDrive.connect(lowpass);
+    lowpass.connect(compressor);
+    compressor.connect(gain);
     gain.connect(this.masterGain);
+
+    // Analyzer tap
+    const meterTap = this.ctx.createGain();
+    gain.connect(meterTap);
+    meterTap.connect(analyzer);
+    analyzer.fftSize = 256;
+
+    this.volumeAnalyzers.push(analyzer);
 
     return {
       input,
@@ -60,15 +72,16 @@ export class Mixer {
       delay,
       delayGain,
       reverbSend,
-      reverbGain,
       convolver,
       preDrive,
       waveshaper,
       postDrive,
+      lowpass,
+      compressor,
+      analyzer,
     };
   }
 
-  // Update node params from channel settings
   applyParams(nodes, params) {
     const {
       volume = 1,
@@ -76,30 +89,24 @@ export class Mixer {
       delayFeedback = 0,
       reverb = 0,
       distortion = 0,
+      frequency = 22050,
+      noiseGate = -100,
     } = params || {};
-    nodes.gain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.01);
 
-    nodes.delay.delayTime.setTargetAtTime(
-      delayTime,
-      this.ctx.currentTime,
-      0.01
-    );
-    nodes.delayGain.gain.setTargetAtTime(
-      delayFeedback,
-      this.ctx.currentTime,
-      0.01
-    );
+    const t = this.ctx.currentTime;
 
-    nodes.reverbSend.gain.setTargetAtTime(reverb, this.ctx.currentTime, 0.01);
+    nodes.gain.gain.setTargetAtTime(volume, t, 0.01);
+    nodes.delay.delayTime.setTargetAtTime(delayTime, t, 0.01);
+    nodes.delayGain.gain.setTargetAtTime(delayFeedback, t, 0.01);
+    nodes.reverbSend.gain.setTargetAtTime(reverb, t, 0.01);
 
     const drive = Math.max(0, Math.min(1, distortion));
-    nodes.waveshaper.curve = this._makeDistCurve(drive * 40); // saturator drive
-    nodes.preDrive.gain.setTargetAtTime(
-      1 + drive * 2,
-      this.ctx.currentTime,
-      0.01
-    );
-    nodes.postDrive.gain.setTargetAtTime(1, this.ctx.currentTime, 0.01);
+    nodes.waveshaper.curve = this._makeDistCurve(drive * 40);
+    nodes.preDrive.gain.setTargetAtTime(1 + drive * 2, t, 0.01);
+    nodes.postDrive.gain.setTargetAtTime(1, t, 0.01);
+
+    nodes.lowpass.frequency.setTargetAtTime(frequency, t, 0.01);
+    nodes.compressor.threshold.setTargetAtTime(noiseGate, t, 0.01);
   }
 
   _makeImpulse(seconds = 1.5, decay = 2.0) {
@@ -126,5 +133,9 @@ export class Mixer {
       curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
     }
     return curve;
+  }
+
+  getAnalyzers() {
+    return this.volumeAnalyzers;
   }
 }

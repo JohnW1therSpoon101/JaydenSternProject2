@@ -1,0 +1,745 @@
+Prompt Instructions => 
+
+I want you to add the following features to my website. 
+Add these features to the mixer: 
+- frequency slider 
+- Basic NoiseGate 
+- Verticle visual slider showing the volume. 
+- add a "main" track that handles all of the sounds inserted put together. 
+
+.......................... Directory 
+
+DrumSequencer/
+│
+├── frontend/
+│   ├── index.html                # Main sequencer interface
+│   ├── css/
+│   │   └── style.css             # UI styling (dark theme, FL Studio grid layout)
+│   └── js/
+│       ├── DrumGrid.js           # Builds & manages the drum grid UI
+│       ├── SoundEngine.js        # Handles playback and sound triggering
+│       ├── Mixer.js              # Applies reverb, delay, distortion, and volume control
+│       ├── Exporter.js           # Mixes sequence and exports as WAV
+│       └── main.js               # App initialization and event logic
+│
+├── assets/
+│   ├── Kick.wav
+│   ├── Snare.wav
+│   ├── Clap.wav
+│   ├── HiHat.wav
+│   ├── OpenHat.wav
+│   └── Crash.wav
+│
+├── BuildTools/ ( don't need but i chose to include) 
+│   └── scripts/
+│       ├── run-local.sh          # Launches a local dev server
+│       └── clean-assets.sh       # (Optional) clears unused custom uploads
+│
+└── README.md                     # Project guide (this file)
+....................... Project Reference
+
+BackupProject(folder)/DrumSequencer(folder)/frontend(folder)/indes.html => [<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DrumSequencer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="left">
+        <button id="playBtn" aria-label="Play">▶️ Play</button>
+        <button id="stopBtn" aria-label="Stop">⏹️ Stop</button>
+        <label
+          >Tempo
+          <input id="tempoInput" type="number" min="40" max="240" value="120" />
+          <span>bpm</span>
+        </label>
+        <label
+          >Time Signature
+          <select id="timeSignatureSelect">
+            <option value="4/4" selected>4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="6/8">6/8</option>
+          </select>
+        </label>
+        <label
+          >Steps / beat
+          <select id="stepsPerBeatSelect">
+            <option value="4" selected>4 (16ths)</option>
+            <option value="3">3 (triplets)</option>
+            <option value="2">2 (8ths)</option>
+          </select>
+        </label>
+        <button id="clearPatternBtn">🧽 Clear</button>
+      </div>
+      <div class="right">
+        <button id="addSoundBtn">➕ Add Drum Sound</button>
+        <input id="addSoundFile" type="file" accept="audio/*" hidden />
+        <button id="exportBtn">⬇️ Export .wav</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid-section">
+        <div class="grid-header">
+          <h2>Step Sequencer</h2>
+          <div id="nowMarker" aria-hidden="true"></div>
+        </div>
+        <div
+          id="gridContainer"
+          class="grid-container"
+          role="grid"
+          aria-label="Drum step sequencer grid"
+        ></div>
+      </section>
+
+      <section class="mixer-section">
+        <h2>Mixer</h2>
+        <div id="mixerContainer" class="mixer-container"></div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <small>DrumSequencer — HTML + JavaScript — Web Audio API</small>
+    </footer>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
+]
+
+BakupProject(folder)/DrumSequencer(folder)/frontend(folder)/ja(folder)/Mixer.js => [// track mixer (volume, delay, reverb, distortion)
+export class Mixer {
+  constructor(audioContext) {
+    this.ctx = audioContext;
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = 1.0;
+    this.masterGain.connect(this.ctx.destination);
+
+    // Simple shared impulse for reverb (small room)
+    this.sharedImpulse = this._makeImpulse(1.5, 0.5); // length(s), decay
+  }
+
+  createChannelNodes() {
+    const gain = this.ctx.createGain();
+
+    const delay = this.ctx.createDelay(2.0);
+    delay.delayTime.value = 0.0;
+    const delayGain = this.ctx.createGain();
+    delayGain.gain.value = 0.0;
+
+    const convolver = this.ctx.createConvolver();
+    convolver.buffer = this.sharedImpulse;
+    const reverbGain = this.ctx.createGain();
+    reverbGain.gain.value = 0.0;
+
+    const waveshaper = this.ctx.createWaveShaper();
+    waveshaper.curve = this._makeDistCurve(0); // 0 drive
+    const preDrive = this.ctx.createGain();
+    preDrive.gain.value = 1.0;
+    const postDrive = this.ctx.createGain();
+    postDrive.gain.value = 1.0;
+
+    // Dry/Wet routing: input -> (dry+fx) -> gain -> master (built w AI)
+    const input = this.ctx.createGain();
+
+    // Delay send/return
+    input.connect(delay);
+    delay.connect(delayGain);
+    delayGain.connect(input); // feedback tapped back in for repeats
+
+    // Reverb send (parallel)
+    const reverbSend = this.ctx.createGain();
+    reverbSend.gain.value = 0.0;
+    input.connect(reverbSend);
+    reverbSend.connect(convolver);
+    convolver.connect(input);
+
+    // Distortion inline
+    input.connect(preDrive);
+    preDrive.connect(waveshaper);
+    waveshaper.connect(postDrive);
+
+    // Output
+    postDrive.connect(gain);
+    gain.connect(this.masterGain);
+
+    return {
+      input,
+      gain,
+      delay,
+      delayGain,
+      reverbSend,
+      reverbGain,
+      convolver,
+      preDrive,
+      waveshaper,
+      postDrive,
+    };
+  }
+
+  // Update node params from channel settings
+  applyParams(nodes, params) {
+    const {
+      volume = 1,
+      delayTime = 0,
+      delayFeedback = 0,
+      reverb = 0,
+      distortion = 0,
+    } = params || {};
+    nodes.gain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.01);
+
+    nodes.delay.delayTime.setTargetAtTime(
+      delayTime,
+      this.ctx.currentTime,
+      0.01
+    );
+    nodes.delayGain.gain.setTargetAtTime(
+      delayFeedback,
+      this.ctx.currentTime,
+      0.01
+    );
+
+    nodes.reverbSend.gain.setTargetAtTime(reverb, this.ctx.currentTime, 0.01);
+
+    const drive = Math.max(0, Math.min(1, distortion));
+    nodes.waveshaper.curve = this._makeDistCurve(drive * 40); // saturator drive
+    nodes.preDrive.gain.setTargetAtTime(
+      1 + drive * 2,
+      this.ctx.currentTime,
+      0.01
+    );
+    nodes.postDrive.gain.setTargetAtTime(1, this.ctx.currentTime, 0.01);
+  }
+
+  _makeImpulse(seconds = 1.5, decay = 2.0) {
+    const rate = this.ctx.sampleRate;
+    const length = Math.floor(rate * seconds);
+    const impulse = this.ctx.createBuffer(2, length, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const channelData = impulse.getChannelData(ch);
+      for (let i = 0; i < length; i++) {
+        const t = i / length;
+        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, decay);
+      }
+    }
+    return impulse;
+  }
+
+  _makeDistCurve(amount = 0) {
+    const k = typeof amount === "number" ? amount : 0;
+    const n_samples = 44100;
+    const curve = new Float32Array(n_samples);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n_samples; ++i) {
+      const x = (i * 2) / n_samples - 1;
+      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+  }
+}
+]
+
+BackupProject(folder)/DrumSequencer(folder)/js(folder)/Main.js => [import { DrumGrid } from "./DrumGrid.js";
+import { SoundEngine } from "./SoundEngine.js";
+import { exportPatternWav } from "./Exporter.js";
+
+// ---------- Global State ----------
+const state = {
+  bpm: 120,
+  timeSig: "4/4",
+  stepsPerBeat: 4,
+  stepsPerPattern: patternSteps("4/4", 4),
+  tracks: [], // see createDefaultTracks()
+};
+
+// ---------- Document Object Model  ----------
+const gridContainer = document.getElementById("gridContainer");
+const mixerContainer = document.getElementById("mixerContainer");
+const playBtn = document.getElementById("playBtn");
+const stopBtn = document.getElementById("stopBtn");
+const tempoInput = document.getElementById("tempoInput");
+const timeSignatureSelect = document.getElementById("timeSignatureSelect");
+const stepsPerBeatSelect = document.getElementById("stepsPerBeatSelect");
+const addSoundBtn = document.getElementById("addSoundBtn");
+const addSoundFile = document.getElementById("addSoundFile");
+const exportBtn = document.getElementById("exportBtn");
+const clearPatternBtn = document.getElementById("clearPatternBtn");
+
+// ---------- Components ----------
+const grid = new DrumGrid({
+  container: gridContainer,
+  getState: () => state,
+  onToggleStep: (tIdx, sIdx) => {
+    state.tracks[tIdx].steps[sIdx] = !state.tracks[tIdx].steps[sIdx];
+    grid.refreshActiveStates();
+  },
+  onChangeRowName: (tIdx, newName) => {
+    state.tracks[tIdx].name = newName;
+    renderUI();
+  },
+});
+
+const engine = new SoundEngine(
+  () => state,
+  (stepIdx) => grid.updatePlayhead(stepIdx)
+);
+
+// ---------- Init ----------
+createDefaultTracks();
+renderUI();
+
+// ---------- UI Wiring ----------
+playBtn.addEventListener("click", async () => {
+  await engine.start();
+  playBtn.disabled = true;
+  stopBtn.disabled = false;
+});
+stopBtn.addEventListener("click", () => {
+  engine.stop();
+  playBtn.disabled = false;
+  stopBtn.disabled = true;
+});
+tempoInput.addEventListener("input", () => {
+  const v = clamp(parseInt(tempoInput.value || "120", 10), 40, 240);
+  state.bpm = v;
+});
+timeSignatureSelect.addEventListener("change", () => {
+  state.timeSig = timeSignatureSelect.value;
+  state.stepsPerPattern = patternSteps(state.timeSig, state.stepsPerBeat);
+  resizePatterns();
+  renderUI();
+});
+stepsPerBeatSelect.addEventListener("change", () => {
+  state.stepsPerBeat = parseInt(stepsPerBeatSelect.value, 10);
+  state.stepsPerPattern = patternSteps(state.timeSig, state.stepsPerBeat);
+  resizePatterns();
+  renderUI();
+});
+addSoundBtn.addEventListener("click", () => addSoundFile.click());
+addSoundFile.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  await addUploadedTrack(file);
+  e.target.value = "";
+});
+exportBtn.addEventListener("click", async () => {
+  exportBtn.disabled = true;
+  exportBtn.textContent = "Rendering...";
+  try {
+    const blob = await exportPatternWav({ state });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "drum_sequence.wav";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Export failed. See console for details.");
+  } finally {
+    exportBtn.disabled = false;
+    exportBtn.textContent = "⬇️ Export .wav";
+  }
+});
+clearPatternBtn.addEventListener("click", () => {
+  state.tracks.forEach((t) => t.steps.fill(false));
+  grid.refreshActiveStates();
+});
+
+// ---------- Helpers ----------
+function patternSteps(timeSig, stepsPerBeat) {
+  const [num, den] = timeSig.split("/").map(Number);
+  const beats = num || 4;
+  return beats * stepsPerBeat;
+}
+
+function resizePatterns() {
+  const len = state.stepsPerPattern;
+  state.tracks.forEach((t) => {
+    if (t.steps.length === len) return;
+    const next = new Array(len).fill(false);
+    for (let i = 0; i < Math.min(len, t.steps.length); i++)
+      next[i] = t.steps[i];
+    t.steps = next;
+  });
+}
+
+function renderUI() {
+  grid.render();
+  renderMixer();
+  engine.updateMixerParams(state.tracks);
+}
+
+function renderMixer() {
+  mixerContainer.innerHTML = "";
+  state.tracks.forEach((t, idx) => {
+    const el = document.createElement("div");
+    el.className = "channel";
+    el.innerHTML = `
+      <div class="chan-head">
+        <span class="title">${t.name}</span>
+        <span class="badge">${
+          t.source === "buffer" ? "sample" : t.synthType
+        }</span>
+      </div>
+      <div class="file-row">
+        <input type="file" data-idx="${idx}" accept="audio/*" />
+        <span class="small">replace sample (optional)</span>
+      </div>
+      <div class="slider-row">
+        <label>Volume</label>
+        <input type="range" min="0" max="1" step="0.01" value="${
+          t.mixer.volume
+        }" data-ctl="volume" data-idx="${idx}" />
+      </div>
+      <div class="slider-row">
+        <label>Reverb</label>
+        <input type="range" min="0" max="1" step="0.01" value="${
+          t.mixer.reverb
+        }" data-ctl="reverb" data-idx="${idx}" />
+      </div>
+      <div class="slider-row">
+        <label>Delay Time (s)</label>
+        <input type="range" min="0" max="1" step="0.01" value="${
+          t.mixer.delayTime
+        }" data-ctl="delayTime" data-idx="${idx}" />
+      </div>
+      <div class="slider-row">
+        <label>Delay Feedback</label>
+        <input type="range" min="0" max="0.95" step="0.01" value="${
+          t.mixer.delayFeedback
+        }" data-ctl="delayFeedback" data-idx="${idx}" />
+      </div>
+      <div class="slider-row">
+        <label>Distortion</label>
+        <input type="range" min="0" max="1" step="0.01" value="${
+          t.mixer.distortion
+        }" data-ctl="distortion" data-idx="${idx}" />
+      </div>
+    `;
+    mixerContainer.appendChild(el);
+  });
+
+  // wire sliders + file inputs
+  mixerContainer.querySelectorAll('input[type="range"]').forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const ctl = e.target.dataset.ctl;
+      state.tracks[idx].mixer[ctl] = parseFloat(e.target.value);
+      engine.updateMixerParams(state.tracks);
+    });
+  });
+
+  mixerContainer.querySelectorAll('input[type="file"]').forEach((input) => {
+    input.addEventListener("change", async (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const buffer = await engine.decodeFile(file);
+      state.tracks[idx].buffer = buffer;
+      state.tracks[idx].source = "buffer";
+      state.tracks[idx].name = file.name.replace(/\.[^.]+$/, "");
+      renderUI();
+    });
+  });
+}
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+// ---------- Defaults ----------
+async function createDefaultTracks() {
+  // Pre-fill with common rows. Attempt to fetch assets; if not found, use synth fallback.
+  const defaults = [
+    { name: "Kick", file: "./assets/Kick.wav", synthType: "kick" },
+    { name: "Snare", file: "./assets/Snare.wav", synthType: "snare" },
+    { name: "Clap", file: "./assets/Clap.wav", synthType: "clap" },
+    { name: "HiHat", file: "./assets/HiHat.wav", synthType: "hihat" },
+    { name: "OpenHat", file: "./assets/OpenHat.wav", synthType: "hihat" },
+    { name: "Crash", file: "./assets/Crash.wav", synthType: "hihat" },
+  ];
+
+  state.tracks = await Promise.all(
+    defaults.map(async (d) => {
+      let buffer = null;
+      try {
+        buffer = await fetchAudioBufferSafe(d.file);
+      } catch {}
+      return {
+        id: crypto.randomUUID(),
+        name: d.name,
+        source: buffer ? "buffer" : "synth",
+        buffer,
+        synthType: d.synthType,
+        steps: new Array(state.stepsPerPattern).fill(false),
+        mixer: {
+          volume: 0.8,
+          reverb: d.name === "Crash" ? 0.35 : 0.1,
+          delayTime: d.name === "Clap" ? 0.08 : 0,
+          delayFeedback: d.name === "Clap" ? 0.2 : 0,
+          distortion: 0,
+        },
+      };
+    })
+  );
+
+  // simple starter pattern (4/4)
+  const idxByName = Object.fromEntries(state.tracks.map((t, i) => [t.name, i]));
+  fillSteps(idxByName["Kick"], [0, 8]);
+  fillSteps(idxByName["Snare"], [4, 12]);
+  for (let s = 2; s < state.stepsPerPattern; s += 4)
+    state.tracks[idxByName["HiHat"]].steps[s] = true;
+
+  renderUI();
+}
+
+function fillSteps(trackIdx, steps) {
+  if (trackIdx == null) return;
+  steps.forEach((s) => {
+    if (s < state.stepsPerPattern) state.tracks[trackIdx].steps[s] = true;
+  });
+}
+
+async function fetchAudioBufferSafe(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("fetch failed");
+  const arrayBuf = await res.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const temp = new AudioCtx();
+  const decoded = await temp.decodeAudioData(arrayBuf);
+  temp.close();
+  return decoded;
+}
+
+async function addUploadedTrack(file) {
+  const buffer = await engine.decodeFile(file);
+  const track = {
+    id: crypto.randomUUID(),
+    name: file.name.replace(/\.[^.]+$/, ""),
+    source: "buffer",
+    buffer,
+    synthType: null,
+    steps: new Array(state.stepsPerPattern).fill(false),
+    mixer: {
+      volume: 0.8,
+      reverb: 0.1,
+      delayTime: 0,
+      delayFeedback: 0,
+      distortion: 0,
+    },
+  };
+  state.tracks.push(track);
+  renderUI();
+}
+]
+
+BackupProject(folder)/DrumSequencer(folder)/frontend(folder)/js(folder)/SoundEngine.js => [// Scheduling + sample loading + synth fallback
+import { Mixer } from "./Mixer.js";
+
+export class SoundEngine {
+  constructor(getState, onStep) {
+    this.getState = getState;
+    this.onStep = onStep; // callback(stepIndex) for playhead UI
+    this.ctx = null;
+    this.mixer = null;
+
+    this.tracksNodes = []; // per-track channel nodes
+    this.isPlaying = false;
+
+    // scheduler
+    this.lookahead = 0.1; // seconds
+    this.scheduleInterval = null;
+    this.nextNoteTime = 0;
+    this.currentStep = 0;
+  }
+
+  async ensureContext() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.mixer = new Mixer(this.ctx);
+  }
+
+  // Initialize track audio nodes
+  async attachTracks(tracks) {
+    await this.ensureContext();
+    this.tracksNodes.forEach((n) => n.input.disconnect());
+    this.tracksNodes = tracks.map(() => this.mixer.createChannelNodes());
+  }
+
+  updateMixerParams(tracks) {
+    tracks.forEach((t, i) =>
+      this.mixer.applyParams(this.tracksNodes[i], t.mixer)
+    );
+  }
+
+  // Step duration in seconds
+  stepDurationSec() {
+    const { bpm, stepsPerBeat } = this.getState();
+    const beatDur = 60 / bpm;
+    return beatDur / stepsPerBeat;
+  }
+
+  // Start/stop
+  async start() {
+    const { tracks } = this.getState();
+    await this.attachTracks(tracks);
+    this.updateMixerParams(tracks);
+
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+
+    this.isPlaying = true;
+    const now = this.ctx.currentTime;
+    this.nextNoteTime = now + 0.05;
+    this.currentStep = 0;
+    this._scheduleLoop();
+  }
+
+  stop() {
+    this.isPlaying = false;
+    if (this.scheduleInterval) {
+      clearInterval(this.scheduleInterval);
+      this.scheduleInterval = null;
+    }
+    this.onStep(-1);
+  }
+
+  _scheduleLoop() {
+    const schedule = () => {
+      const { stepsPerPattern, tracks } = this.getState();
+      const stepDur = this.stepDurationSec();
+
+      while (this.nextNoteTime < this.ctx.currentTime + this.lookahead) {
+        const stepIdx = this.currentStep % stepsPerPattern;
+
+        // schedule triggers for each track
+        tracks.forEach((t, i) => {
+          if (t.steps[stepIdx]) this._triggerTrack(i, this.nextNoteTime, t);
+        });
+
+        // UI update near the step
+        setTimeout(
+          () => this.onStep(stepIdx),
+          Math.max(0, (this.nextNoteTime - this.ctx.currentTime) * 1000)
+        );
+
+        this.nextNoteTime += stepDur;
+        this.currentStep++;
+      }
+    };
+
+    schedule();
+    this.scheduleInterval = setInterval(schedule, this.lookahead * 500);
+  }
+
+  async _triggerTrack(trackIndex, time, track) {
+    const nodes = this.tracksNodes[trackIndex];
+    // Try sample buffer first
+    if (track.source === "buffer" && track.buffer) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = track.buffer;
+      src.connect(nodes.input);
+      src.start(time);
+      return;
+    }
+    // Fallback synth
+    this._playSynth(
+      track.synthType || "hihat",
+      time,
+      nodes.input,
+      track.synthParams || {}
+    );
+  }
+
+  // Basic synth building: kick, snare, clap, hihat — quick & light
+  _playSynth(type, time, dest, params = {}) {
+    const ctx = this.ctx;
+    const vol = ctx.createGain();
+    vol.gain.setValueAtTime(params.vol ?? 1.0, time);
+    vol.connect(dest);
+
+    if (type === "kick") {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(40, time + 0.12);
+      gain.gain.setValueAtTime(1, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+      osc.connect(gain).connect(vol);
+      osc.start(time);
+      osc.stop(time + 0.2);
+    } else if (type === "snare") {
+      // noise burst + body
+      const noiseBuf = this._whiteNoiseBuffer();
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.5, time);
+      ng.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+      noise.connect(ng).connect(vol);
+      noise.start(time);
+      noise.stop(time + 0.2);
+
+      const osc = ctx.createOscillator();
+      const og = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(200, time);
+      og.gain.setValueAtTime(0.3, time);
+      og.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+      osc.connect(og).connect(vol);
+      osc.start(time);
+      osc.stop(time + 0.2);
+    } else if (type === "clap") {
+      // 3 fast noise taps
+      const buf = this._whiteNoiseBuffer();
+      const makeTap = (dt) => {
+        const n = ctx.createBufferSource();
+        n.buffer = buf;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.6, time + dt);
+        g.gain.exponentialRampToValueAtTime(0.001, time + dt + 0.08);
+        n.connect(g).connect(vol);
+        n.start(time + dt);
+        n.stop(time + dt + 0.1);
+      };
+      makeTap(0);
+      makeTap(0.015);
+      makeTap(0.03);
+    } else {
+      // hihat sound
+      const buf = this._whiteNoiseBuffer();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 7000;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.5, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+      src.connect(hp).connect(g).connect(vol);
+      src.start(time);
+      src.stop(time + 0.06);
+    }
+  }
+
+  _whiteNoiseBuffer() {
+    const len = this.ctx.sampleRate * 1.0;
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  async decodeFile(file) {
+    await this.ensureContext();
+    const arrayBuf = await file.arrayBuffer();
+    return await this.ctx.decodeAudioData(arrayBuf);
+  }
+}
+]

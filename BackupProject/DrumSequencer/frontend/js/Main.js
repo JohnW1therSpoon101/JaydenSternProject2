@@ -8,10 +8,10 @@ const state = {
   timeSig: "4/4",
   stepsPerBeat: 4,
   stepsPerPattern: patternSteps("4/4", 4),
-  tracks: [], // see createDefaultTracks()
+  tracks: [],
 };
 
-// ---------- Document Object Model  ----------
+// ---------- DOM ----------
 const gridContainer = document.getElementById("gridContainer");
 const mixerContainer = document.getElementById("mixerContainer");
 const playBtn = document.getElementById("playBtn");
@@ -47,40 +47,48 @@ const engine = new SoundEngine(
 createDefaultTracks();
 renderUI();
 
-// ---------- UI Wiring ----------
+// ---------- UI Events ----------
 playBtn.addEventListener("click", async () => {
   await engine.start();
   playBtn.disabled = true;
   stopBtn.disabled = false;
+  startMeterAnimation(); // volume meters
 });
+
 stopBtn.addEventListener("click", () => {
   engine.stop();
   playBtn.disabled = false;
   stopBtn.disabled = true;
 });
+
 tempoInput.addEventListener("input", () => {
   const v = clamp(parseInt(tempoInput.value || "120", 10), 40, 240);
   state.bpm = v;
 });
+
 timeSignatureSelect.addEventListener("change", () => {
   state.timeSig = timeSignatureSelect.value;
   state.stepsPerPattern = patternSteps(state.timeSig, state.stepsPerBeat);
   resizePatterns();
   renderUI();
 });
+
 stepsPerBeatSelect.addEventListener("change", () => {
   state.stepsPerBeat = parseInt(stepsPerBeatSelect.value, 10);
   state.stepsPerPattern = patternSteps(state.timeSig, state.stepsPerBeat);
   resizePatterns();
   renderUI();
 });
+
 addSoundBtn.addEventListener("click", () => addSoundFile.click());
+
 addSoundFile.addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   await addUploadedTrack(file);
   e.target.value = "";
 });
+
 exportBtn.addEventListener("click", async () => {
   exportBtn.disabled = true;
   exportBtn.textContent = "Rendering...";
@@ -102,6 +110,7 @@ exportBtn.addEventListener("click", async () => {
     exportBtn.textContent = "⬇️ Export .wav";
   }
 });
+
 clearPatternBtn.addEventListener("click", () => {
   state.tracks.forEach((t) => t.steps.fill(false));
   grid.refreshActiveStates();
@@ -109,7 +118,7 @@ clearPatternBtn.addEventListener("click", () => {
 
 // ---------- Helpers ----------
 function patternSteps(timeSig, stepsPerBeat) {
-  const [num, den] = timeSig.split("/").map(Number);
+  const [num] = timeSig.split("/").map(Number);
   const beats = num || 4;
   return beats * stepsPerBeat;
 }
@@ -133,6 +142,7 @@ function renderUI() {
 
 function renderMixer() {
   mixerContainer.innerHTML = "";
+
   state.tracks.forEach((t, idx) => {
     const el = document.createElement("div");
     el.className = "channel";
@@ -147,41 +157,47 @@ function renderMixer() {
         <input type="file" data-idx="${idx}" accept="audio/*" />
         <span class="small">replace sample (optional)</span>
       </div>
-      <div class="slider-row">
-        <label>Volume</label>
+      <div class="slider-row"><label>Volume</label>
         <input type="range" min="0" max="1" step="0.01" value="${
           t.mixer.volume
         }" data-ctl="volume" data-idx="${idx}" />
       </div>
-      <div class="slider-row">
-        <label>Reverb</label>
+      <div class="slider-row"><label>Reverb</label>
         <input type="range" min="0" max="1" step="0.01" value="${
           t.mixer.reverb
         }" data-ctl="reverb" data-idx="${idx}" />
       </div>
-      <div class="slider-row">
-        <label>Delay Time (s)</label>
+      <div class="slider-row"><label>Delay Time</label>
         <input type="range" min="0" max="1" step="0.01" value="${
           t.mixer.delayTime
         }" data-ctl="delayTime" data-idx="${idx}" />
       </div>
-      <div class="slider-row">
-        <label>Delay Feedback</label>
+      <div class="slider-row"><label>Delay Feedback</label>
         <input type="range" min="0" max="0.95" step="0.01" value="${
           t.mixer.delayFeedback
         }" data-ctl="delayFeedback" data-idx="${idx}" />
       </div>
-      <div class="slider-row">
-        <label>Distortion</label>
+      <div class="slider-row"><label>Distortion</label>
         <input type="range" min="0" max="1" step="0.01" value="${
           t.mixer.distortion
         }" data-ctl="distortion" data-idx="${idx}" />
       </div>
+      <div class="slider-row"><label>Frequency</label>
+        <input type="range" min="100" max="22050" step="1" value="${
+          t.mixer.frequency
+        }" data-ctl="frequency" data-idx="${idx}" />
+      </div>
+      <div class="slider-row"><label>Noise Gate</label>
+        <input type="range" min="-100" max="0" step="1" value="${
+          t.mixer.noiseGate
+        }" data-ctl="noiseGate" data-idx="${idx}" />
+      </div>
+      <div class="volume-meter"><div class="volume-bar"></div></div>
     `;
     mixerContainer.appendChild(el);
   });
 
-  // wire sliders + file inputs
+  // Slider wiring
   mixerContainer.querySelectorAll('input[type="range"]').forEach((input) => {
     input.addEventListener("input", (e) => {
       const idx = parseInt(e.target.dataset.idx, 10);
@@ -209,9 +225,14 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-// ---------- Defaults ----------
+function fillSteps(trackIdx, steps) {
+  if (trackIdx == null) return;
+  steps.forEach((s) => {
+    if (s < state.stepsPerPattern) state.tracks[trackIdx].steps[s] = true;
+  });
+}
+
 async function createDefaultTracks() {
-  // Pre-fill with common rows. Attempt to fetch assets; if not found, use synth fallback.
   const defaults = [
     { name: "Kick", file: "./assets/Kick.wav", synthType: "kick" },
     { name: "Snare", file: "./assets/Snare.wav", synthType: "snare" },
@@ -240,12 +261,13 @@ async function createDefaultTracks() {
           delayTime: d.name === "Clap" ? 0.08 : 0,
           delayFeedback: d.name === "Clap" ? 0.2 : 0,
           distortion: 0,
+          frequency: 22050,
+          noiseGate: -100,
         },
       };
     })
   );
 
-  // simple starter pattern (4/4)
   const idxByName = Object.fromEntries(state.tracks.map((t, i) => [t.name, i]));
   fillSteps(idxByName["Kick"], [0, 8]);
   fillSteps(idxByName["Snare"], [4, 12]);
@@ -253,13 +275,6 @@ async function createDefaultTracks() {
     state.tracks[idxByName["HiHat"]].steps[s] = true;
 
   renderUI();
-}
-
-function fillSteps(trackIdx, steps) {
-  if (trackIdx == null) return;
-  steps.forEach((s) => {
-    if (s < state.stepsPerPattern) state.tracks[trackIdx].steps[s] = true;
-  });
 }
 
 async function fetchAudioBufferSafe(url) {
@@ -288,8 +303,29 @@ async function addUploadedTrack(file) {
       delayTime: 0,
       delayFeedback: 0,
       distortion: 0,
+      frequency: 22050,
+      noiseGate: -100,
     },
   };
   state.tracks.push(track);
   renderUI();
+}
+
+// ---------- Visual Meter ----------
+function startMeterAnimation() {
+  const analyzers = engine.mixer.getAnalyzers();
+  const bars = document.querySelectorAll(".volume-bar");
+
+  function loop() {
+    analyzers.forEach((analyzer, i) => {
+      const data = new Uint8Array(analyzer.frequencyBinCount);
+      analyzer.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      const percent = Math.min(100, (avg / 256) * 100);
+      if (bars[i]) bars[i].style.height = `${percent}%`;
+    });
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
 }

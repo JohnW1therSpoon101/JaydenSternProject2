@@ -1,18 +1,16 @@
-// Scheduling + sample loading + synth fallback
 import { Mixer } from "./Mixer.js";
 
 export class SoundEngine {
   constructor(getState, onStep) {
     this.getState = getState;
-    this.onStep = onStep; // callback(stepIndex) for playhead UI
+    this.onStep = onStep;
     this.ctx = null;
     this.mixer = null;
 
-    this.tracksNodes = []; // per-track channel nodes
+    this.tracksNodes = [];
     this.isPlaying = false;
 
-    // scheduler
-    this.lookahead = 0.1; // seconds
+    this.lookahead = 0.1;
     this.scheduleInterval = null;
     this.nextNoteTime = 0;
     this.currentStep = 0;
@@ -24,27 +22,35 @@ export class SoundEngine {
     this.mixer = new Mixer(this.ctx);
   }
 
-  // Initialize track audio nodes
   async attachTracks(tracks) {
     await this.ensureContext();
     this.tracksNodes.forEach((n) => n.input.disconnect());
-    this.tracksNodes = tracks.map(() => this.mixer.createChannelNodes());
+    this.tracksNodes = tracks.map(() => {
+      const nodes = this.mixer.createChannelNodes();
+
+      // Create analyser for volume meter
+      const analyser = this.ctx.createAnalyser();
+      analyser.fftSize = 256;
+      nodes.gain.connect(analyser);
+      nodes.analyser = analyser;
+
+      return nodes;
+    });
   }
 
   updateMixerParams(tracks) {
-    tracks.forEach((t, i) =>
-      this.mixer.applyParams(this.tracksNodes[i], t.mixer)
-    );
+    tracks.forEach((t, i) => {
+      const nodes = this.tracksNodes[i];
+      if (nodes) this.mixer.applyParams(nodes, t.mixer);
+    });
   }
 
-  // Step duration in seconds
   stepDurationSec() {
     const { bpm, stepsPerBeat } = this.getState();
     const beatDur = 60 / bpm;
     return beatDur / stepsPerBeat;
   }
 
-  // Start/stop
   async start() {
     const { tracks } = this.getState();
     await this.attachTracks(tracks);
@@ -53,8 +59,7 @@ export class SoundEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
 
     this.isPlaying = true;
-    const now = this.ctx.currentTime;
-    this.nextNoteTime = now + 0.05;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
     this.currentStep = 0;
     this._scheduleLoop();
   }
@@ -76,12 +81,10 @@ export class SoundEngine {
       while (this.nextNoteTime < this.ctx.currentTime + this.lookahead) {
         const stepIdx = this.currentStep % stepsPerPattern;
 
-        // schedule triggers for each track
         tracks.forEach((t, i) => {
           if (t.steps[stepIdx]) this._triggerTrack(i, this.nextNoteTime, t);
         });
 
-        // UI update near the step
         setTimeout(
           () => this.onStep(stepIdx),
           Math.max(0, (this.nextNoteTime - this.ctx.currentTime) * 1000)
@@ -98,24 +101,44 @@ export class SoundEngine {
 
   async _triggerTrack(trackIndex, time, track) {
     const nodes = this.tracksNodes[trackIndex];
-    // Try sample buffer first
+
+    // Frequency filter (if needed)
+    if (!nodes.freqFilter) {
+      const freqFilter = this.ctx.createBiquadFilter();
+      freqFilter.type = "lowpass";
+      freqFilter.frequency.value = track.mixer.frequency ?? 22050;
+      nodes.gain.disconnect();
+      nodes.gain.connect(freqFilter).connect(this.mixer.masterGain);
+      nodes.freqFilter = freqFilter;
+    } else {
+      nodes.freqFilter.frequency.setTargetAtTime(
+        track.mixer.frequency ?? 22050,
+        time,
+        0.01
+      );
+    }
+
+    // Noise gate (simple threshold cutoff)
+    const noiseGate = this.ctx.createGain();
+    const thresholdDb = track.mixer.noiseGate ?? -100;
+    noiseGate.gain.value = 1.0; // simplified version for now
+    noiseGate.connect(nodes.input);
+
     if (track.source === "buffer" && track.buffer) {
       const src = this.ctx.createBufferSource();
       src.buffer = track.buffer;
-      src.connect(nodes.input);
+      src.connect(noiseGate);
       src.start(time);
-      return;
+    } else {
+      this._playSynth(
+        track.synthType || "hihat",
+        time,
+        noiseGate,
+        track.synthParams || {}
+      );
     }
-    // Fallback synth
-    this._playSynth(
-      track.synthType || "hihat",
-      time,
-      nodes.input,
-      track.synthParams || {}
-    );
   }
 
-  // Basic synth building: kick, snare, clap, hihat — quick & light
   _playSynth(type, time, dest, params = {}) {
     const ctx = this.ctx;
     const vol = ctx.createGain();
@@ -134,7 +157,6 @@ export class SoundEngine {
       osc.start(time);
       osc.stop(time + 0.2);
     } else if (type === "snare") {
-      // noise burst + body
       const noiseBuf = this._whiteNoiseBuffer();
       const noise = ctx.createBufferSource();
       noise.buffer = noiseBuf;
@@ -155,7 +177,6 @@ export class SoundEngine {
       osc.start(time);
       osc.stop(time + 0.2);
     } else if (type === "clap") {
-      // 3 fast noise taps
       const buf = this._whiteNoiseBuffer();
       const makeTap = (dt) => {
         const n = ctx.createBufferSource();
@@ -171,7 +192,6 @@ export class SoundEngine {
       makeTap(0.015);
       makeTap(0.03);
     } else {
-      // hihat sound
       const buf = this._whiteNoiseBuffer();
       const src = ctx.createBufferSource();
       src.buffer = buf;
@@ -188,10 +208,12 @@ export class SoundEngine {
   }
 
   _whiteNoiseBuffer() {
-    const len = this.ctx.sampleRate * 1.0;
+    const len = this.ctx.sampleRate;
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < len; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
     return buf;
   }
 

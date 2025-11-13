@@ -1,14 +1,14 @@
-// Render the pattern offline and export as WAV
+// Exporter.js — Render the pattern offline and export as WAV
 export async function exportPatternWav({ state }) {
   const { bpm, stepsPerBeat, stepsPerPattern, tracks } = state;
   const bars = stepsPerPattern / (stepsPerBeat * beatsPerBar(state.timeSig));
-  const renderBars = Math.max(1, Math.ceil(bars)); // at least 1 bar
+  const renderBars = Math.max(1, Math.ceil(bars));
   const ctxSampleRate = 44100;
 
   const secondsPerBeat = 60 / bpm;
   const stepDur = secondsPerBeat / stepsPerBeat;
   const durationSec =
-    renderBars * beatsPerBar(state.timeSig) * secondsPerBeat + 1.0; // tail
+    renderBars * beatsPerBar(state.timeSig) * secondsPerBeat + 1.0;
 
   const offline = new OfflineAudioContext(
     2,
@@ -31,16 +31,15 @@ export async function exportPatternWav({ state }) {
   // Apply mixer params and connect to destination
   chanNodes.forEach((nodes, i) => {
     applyParams(offline, nodes, tracks[i].mixer || {});
-    nodes.gain.connect(offline.destination);
+    nodes.output.connect(offline.destination);
   });
 
   const rendered = await offline.startRendering();
-  const wavBlob = encodeWav(rendered);
-  return wavBlob;
+  return encodeWav(rendered);
 }
 
 function beatsPerBar(timeSig) {
-  const [num, den] = timeSig.split("/").map(Number);
+  const [num] = timeSig.split("/").map(Number);
   return num || 4;
 }
 
@@ -50,27 +49,36 @@ function makeChannelNodes(ctx) {
   const delayGain = ctx.createGain();
   const reverbSend = ctx.createGain();
   const convolver = ctx.createConvolver();
-  const gain = ctx.createGain();
   const waveshaper = ctx.createWaveShaper();
   const pre = ctx.createGain();
   const post = ctx.createGain();
+  const lowpass = ctx.createBiquadFilter();
+  const noiseGate = ctx.createDynamicsCompressor();
+  const gain = ctx.createGain();
 
-  // Impulse
   convolver.buffer = makeImpulse(ctx, 1.5, 0.5);
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 22050;
 
-  // Wire up
+  // Chain: input → delay → feedback → input
   input.connect(delay);
   delay.connect(delayGain);
   delayGain.connect(input);
 
+  // Reverb (parallel)
   input.connect(reverbSend);
   reverbSend.connect(convolver);
   convolver.connect(input);
 
+  // Distortion chain
   input.connect(pre);
   pre.connect(waveshaper);
   waveshaper.connect(post);
-  post.connect(gain);
+
+  // Final chain: → lowpass → noise gate → gain → destination
+  post.connect(lowpass);
+  lowpass.connect(noiseGate);
+  noiseGate.connect(gain);
 
   return {
     input,
@@ -81,7 +89,10 @@ function makeChannelNodes(ctx) {
     pre,
     waveshaper,
     post,
+    lowpass,
+    noiseGate,
     gain,
+    output: gain,
   };
 }
 
@@ -92,14 +103,26 @@ function applyParams(ctx, n, p) {
     delayFeedback = 0,
     reverb = 0,
     distortion = 0,
+    frequency = 22050,
+    noiseGate = -100, // dB threshold
   } = p;
+
   n.gain.gain.value = volume;
   n.delay.delayTime.value = delayTime;
   n.delayGain.gain.value = delayFeedback;
   n.reverbSend.gain.value = reverb;
+
   n.waveshaper.curve = makeDistCurve(distortion * 40);
   n.pre.gain.value = 1 + Math.max(0, distortion) * 2;
-  n.post.gain.value = 1.0;
+  n.post.gain.value = 1;
+
+  n.lowpass.frequency.value = Math.max(50, frequency);
+
+  n.noiseGate.threshold.setValueAtTime(noiseGate, ctx.currentTime);
+  n.noiseGate.knee.setValueAtTime(10, ctx.currentTime);
+  n.noiseGate.ratio.setValueAtTime(15, ctx.currentTime);
+  n.noiseGate.attack.setValueAtTime(0.01, ctx.currentTime);
+  n.noiseGate.release.setValueAtTime(0.1, ctx.currentTime);
 }
 
 function scheduleHit(ctx, dest, time, track) {
@@ -110,7 +133,7 @@ function scheduleHit(ctx, dest, time, track) {
     src.start(time);
     return;
   }
-  // synth fallback (simple)
+
   const vol = ctx.createGain();
   vol.connect(dest);
   vol.gain.setValueAtTime(1.0, time);
@@ -197,7 +220,7 @@ function makeDistCurve(amount) {
   return curve;
 }
 
-// =====? WAV ENCODER ?=====
+// ========== WAV Encoder ==========
 function encodeWav(audioBuffer) {
   const numCh = audioBuffer.numberOfChannels;
   const length = audioBuffer.length * numCh * 2 + 44;
@@ -220,11 +243,11 @@ function encodeWav(audioBuffer) {
   writeString(view, 36, "data");
   view.setUint32(40, audioBuffer.length * numCh * 2, true);
 
-  // Write interleaved PCM (Pulse Code Modulation)
   let offset = 44;
   const channels = [];
-  for (let ch = 0; ch < numCh; ch++)
+  for (let ch = 0; ch < numCh; ch++) {
     channels.push(audioBuffer.getChannelData(ch));
+  }
 
   for (let i = 0; i < audioBuffer.length; i++) {
     for (let ch = 0; ch < numCh; ch++) {
@@ -234,11 +257,12 @@ function encodeWav(audioBuffer) {
       offset += 2;
     }
   }
+
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-function writeString(dataview, offset, str) {
+function writeString(view, offset, str) {
   for (let i = 0; i < str.length; i++) {
-    dataview.setUint8(offset + i, str.charCodeAt(i));
+    view.setUint8(offset + i, str.charCodeAt(i));
   }
 }
